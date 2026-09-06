@@ -139,7 +139,7 @@ void launcher(const float* d_A, const float* d_B, float* d_C,
 compute-sanitizer ./build/gemm_bench -M 256 -N 256 -K 256
 
 # 性能剖析（按函数耗时排序）
-ncu --set full -o profile ./build/gemm_bench -M 4096 -N 4096 -K 4096
+ncu --set full -o profile ./build/gemm_bench -M 1024 -N 1024 -K 1024
 ```
 
 ## 常见问题

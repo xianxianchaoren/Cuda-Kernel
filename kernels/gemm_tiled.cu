@@ -23,18 +23,32 @@
 #include <gemm/common.h>
 #include <gemm/registry.h>
 
+#define TILE_SIZE 32;
+
 // TODO: 在这里实现你的 kernel
 __global__ void gemm_tiled_kernel(const float* __restrict__ A,
                                   const float* __restrict__ B,
                                   float* __restrict__ C, int M, int N, int K) {
-    // TODO: 你的实现
+    __share__ float sA[TILE_SIZE][TILE_SIZE];
+    __share__ float sB[TILE_SIZE][TILE_SIZE];
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    float sum = 0.0f;
+    
+    for (int i = 0; i < M; i += TILE_SIZE)
+    {
+        sA[threadIdx.]
+    }
+
 }
 
 void launch_gemm_tiled(const float* d_A, const float* d_B, float* d_C, int M,
                        int N, int K, cudaStream_t stream) {
-    // TODO: 配置你的 block/grid 并 launch
-    // gemm_tiled_kernel<<<grid, block, 0, stream>>>(d_A, d_B, d_C, M, N, K);
+    dim3 block(32, 32);
+    dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
+    gemm_tiled_kernel<<<grid, block, 0, stream>>>(d_A, d_B, d_C, M, N, K);
 }
 
 // 实现完成后，取消下面这行注释即可注册进框架：
-// REGISTER_GEMM_KERNEL("tiled", launch_gemm_tiled);
+REGISTER_GEMM_KERNEL("tiled", launch_gemm_tiled);
