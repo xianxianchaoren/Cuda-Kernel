@@ -14,8 +14,9 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 # 构建机（即服务器）上的 GPU 架构。探测不到时才按 toolkit 支持全集编译。
 #
 # 也可以手动指定，例如：
-#   cmake .. -DCMAKE_CUDA_ARCHITECTURES=89        # RTX 40 系
+#   cmake .. -DCMAKE_CUDA_ARCHITECTURES=86        # RTX 30 系 (3090)
 #   cmake .. -DCMAKE_CUDA_ARCHITECTURES=80        # A100
+#   cmake .. -DCMAKE_CUDA_ARCHITECTURES=89        # RTX 40 系
 #   cmake .. -DCMAKE_CUDA_ARCHITECTURES=90        # H100
 # ---------------------------------------------------------------------------
 

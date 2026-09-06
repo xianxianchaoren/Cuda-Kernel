@@ -42,7 +42,7 @@ cmake --build build -j
 
 | 参数 | 说明 |
 |------|------|
-| `-DCMAKE_CUDA_ARCHITECTURES=89` | 指定 GPU 架构（80=A100, 89=RTX40, 90=H100） |
+| `-DCMAKE_CUDA_ARCHITECTURES=86` | 指定 GPU 架构（86=RTX 3090/30 系, 80=A100, 89=RTX40, 90=H100） |
 | `-DGEMM_USE_FAST_MATH=ON` | 打开 `--use_fast_math`（更快但可能失精度） |
 | `-DCMAKE_BUILD_TYPE=Release` | Release 构建 |
 
