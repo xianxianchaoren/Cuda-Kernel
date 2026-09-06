@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.18)
 
 project(CudaKernel LANGUAGES CXX CUDA)
 
+# 显式查找 CUDA 运行时库，定义 CUDA::cudart 目标
+# （较新版本的 CMake 不再在启用 CUDA 语言时隐式提供该目标）
+find_package(CUDAToolkit REQUIRED)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 17)
