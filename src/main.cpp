@@ -25,6 +25,7 @@ struct Options {
     double abs_tol = 1e-4;  // 绝对误差阈值
     int l2flush_mb = 0;     // 每次迭代前冲刷 L2 的大小，0 = 关闭
     bool list_only = false;
+    bool skip_check = false;
 };
 
 void printUsage(const char* prog) {
@@ -39,6 +40,7 @@ void printUsage(const char* prog) {
         "  -K <int>            内维 K (default: 1024)\n"
         "  --kernels <list>    要运行的 kernel，逗号分隔 (default: 全部已注册)\n"
         "  --list              列出所有已注册的 kernel 并退出\n"
+        "  --skip-check        跳过 CPU 参考计算与正确性校验，仅运行性能基准\n"
         "  --iters <int>       benchmark 迭代次数 (default: 10)\n"
         "  --warmup <int>      预热轮数 (default: 3)\n"
         "  --seed <uint64>     随机种子，结果可复现 (default: 42)\n"
@@ -84,6 +86,8 @@ Options parseArgs(int argc, char** argv) {
             if (!s.empty()) o.kernels.push_back(s);
         } else if (std::strcmp(a, "--list") == 0) {
             o.list_only = true;
+        } else if (std::strcmp(a, "--skip-check") == 0) {
+            o.skip_check = true;
         } else if (std::strcmp(a, "--iters") == 0) {
             o.iters = std::atoi(requireValue(argc, argv, i, a));
         } else if (std::strcmp(a, "--warmup") == 0) {
@@ -161,16 +165,19 @@ int main(int argc, char** argv) {
     for (const auto* k : selected) std::printf(" %s", k->name);
     std::printf("\n");
     std::printf("Config   : iters=%d warmup=%d seed=%llu rel_tol=%.1e "
-                "abs_tol=%.1e l2flush=%dMB\n",
+                "abs_tol=%.1e l2flush=%dMB skip_check=%s\n",
                 opt.iters, opt.warmup,
                 static_cast<unsigned long long>(opt.seed), opt.rel_tol,
-                opt.abs_tol, opt.l2flush_mb);
+                opt.abs_tol, opt.l2flush_mb, opt.skip_check ? "yes" : "no");
 
     // ---- 生成数据 + CPU 参考计算 ----
     std::vector<float> A = gemm::randomMatrix(M, K, -1.0f, 1.0f, opt.seed);
     std::vector<float> B = gemm::randomMatrix(K, N, -1.0f, 1.0f, opt.seed + 1);
-    std::vector<float> C_ref(static_cast<size_t>(M) * N);
-    gemm::referenceGemm(A.data(), B.data(), C_ref.data(), M, N, K);
+    std::vector<float> C_ref;
+    if (!opt.skip_check) {
+        C_ref.resize(static_cast<size_t>(M) * N);
+        gemm::referenceGemm(A.data(), B.data(), C_ref.data(), M, N, K);
+    }
 
     // ---- 设备端准备 ----
     float *d_A = nullptr, *d_B = nullptr, *d_C = nullptr, *d_flush = nullptr;
@@ -200,16 +207,18 @@ int main(int argc, char** argv) {
     gemm::GpuTimer timer;
 
     for (const auto* k : selected) {
-        // ---- 正确性校验 ----
-        CUDA_CHECK(cudaMemset(d_C, 0, c_bytes));
-        k->launcher(d_A, d_B, d_C, M, N, K, 0);
-        CUDA_CHECK_LAST();  // 捕获 launch 配置错误
-        CUDA_CHECK(cudaDeviceSynchronize());
-        CUDA_CHECK(cudaMemcpy(C_gpu.data(), d_C, c_bytes,
-                              cudaMemcpyDeviceToHost));
-
-        const gemm::CheckResult cr = gemm::checkResult(
-            C_ref.data(), C_gpu.data(), C_ref.size(), opt.abs_tol, opt.rel_tol);
+        gemm::CheckResult cr;
+        cr.pass = opt.skip_check;
+        if (!opt.skip_check) {
+            CUDA_CHECK(cudaMemset(d_C, 0, c_bytes));
+            k->launcher(d_A, d_B, d_C, M, N, K, 0);
+            CUDA_CHECK_LAST();
+            CUDA_CHECK(cudaDeviceSynchronize());
+            CUDA_CHECK(cudaMemcpy(C_gpu.data(), d_C, c_bytes,
+                                  cudaMemcpyDeviceToHost));
+            cr = gemm::checkResult(C_ref.data(), C_gpu.data(), C_ref.size(),
+                                   opt.abs_tol, opt.rel_tol);
+        }
 
         // ---- 性能基准（仅正确性通过时执行） ----
         double best_ms = 0.0, avg_ms = 0.0, gflops = 0.0;
@@ -239,8 +248,8 @@ int main(int argc, char** argv) {
         }
 
         std::printf("%-10s %-8s %-12.4f %-12.4f %-10.2e %-10.2e %.1f\n",
-                    k->name, cr.pass ? "PASS" : "FAIL", best_ms, avg_ms,
-                    cr.max_rel_err, cr.max_abs_err, gflops);
+                    k->name, opt.skip_check ? "SKIPPED" : (cr.pass ? "PASS" : "FAIL"),
+                    best_ms, avg_ms, cr.max_rel_err, cr.max_abs_err, gflops);
         if (!cr.pass) {
             std::printf("    ^ rms_err=%.2e  (rel_tol=%.1e, abs_tol=%.1e)\n",
                         cr.rms_err, opt.rel_tol, opt.abs_tol);

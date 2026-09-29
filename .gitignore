@@ -4,3 +4,7 @@ build/
 *.so
 .DS_Store
 .ipynb_checkpoints/
+profile/
+command.txt
+
+third_party/

@@ -53,8 +53,13 @@ target_link_libraries(gemm_framework PUBLIC CUDA::cudart)
 # ---------------------------------------------------------------------------
 file(GLOB GEMM_KERNEL_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/kernels/*.cu)
 
+add_library(cutlass_headers INTERFACE)
+target_include_directories(cutlass_headers INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/cutlass/include
+)
+
 add_executable(gemm_bench
     src/main.cpp
     ${GEMM_KERNEL_SOURCES}
 )
-target_link_libraries(gemm_bench PRIVATE gemm_framework)
+target_link_libraries(gemm_bench PRIVATE gemm_framework cutlass_headers)

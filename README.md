@@ -34,7 +34,7 @@
 git clone <repo> && cd Cuda-Kernel
 
 # 可选：指定 GPU 架构（不指定则自动探测）
-cmake -S . -B build -DCMAKE_CUDA_ARCHITECTURES=89   # RTX 40 系
+cmake -S . -B build -DCMAKE_CUDA_ARCHITECTURES=86   # RTX 3090 
 cmake --build build -j
 ```
 
